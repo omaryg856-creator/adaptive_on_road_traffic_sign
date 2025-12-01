@@ -1,15 +1,16 @@
 from ultralytics import YOLO
+import os
 
 def main():
     model = YOLO("yolov8n.pt")
-    yaml_path = r"D:\WSU Academy Files\Fall 2025\ECE 5995\Final_Project\dataset\challenging-dev\challenging\YOLOv8\data.yaml"
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    yaml_path = os.environ.get("DATA_YAML", os.path.join(repo_dir, "dataset", "YOLOv8", "data.yaml"))
     
     results = model.train(
         data=yaml_path,
         epochs=50,
         imgsz=640,
         batch=16,
-        device=0,
         workers=0
     )
     print("Done")

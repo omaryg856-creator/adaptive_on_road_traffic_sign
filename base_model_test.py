@@ -1,4 +1,14 @@
 from ultralytics import YOLO
+import os
 
-model = YOLO(r"D:\WSU Academy Files\Fall 2025\ECE 5995\Final_Project\runs\detect\train\weights\best.pt")
-results = model(r"50mph.jpg")
+repo_dir = os.path.dirname(os.path.abspath(__file__))
+weights = os.environ.get(
+    "WEIGHTS_PATH",
+    os.path.join(repo_dir, "runs", "detect", "train", "weights", "best.pt")
+)
+if not os.path.exists(weights):
+    weights = os.path.join(repo_dir, "yolov8n.pt")
+
+model = YOLO(weights)
+image = os.environ.get("TEST_IMAGE", os.path.join(repo_dir, "test_image.jpg"))
+results = model(image)

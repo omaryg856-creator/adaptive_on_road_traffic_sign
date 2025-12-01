@@ -1,0 +1,5 @@
+ultralytics>=8.0.0
+geocoder>=1.38.1
+folium>=0.15.0
+opencv-python>=4.8.0
+pypdf>=6.0.0

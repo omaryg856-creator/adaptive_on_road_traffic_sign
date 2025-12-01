@@ -3,12 +3,21 @@ import geocoder
 import folium
 import json
 import os
+import datetime
+import math
 
 # Load trained YOLO model
-model = YOLO("runs/detect/train/weights/best.pt")
+repo_dir = os.path.dirname(os.path.abspath(__file__))
+weights = os.environ.get(
+    "WEIGHTS_PATH",
+    os.path.join(repo_dir, "runs", "detect", "train", "weights", "best.pt")
+)
+if not os.path.exists(weights):
+    weights = os.path.join(repo_dir, "yolov8n.pt")
+model = YOLO(weights)
 
 # Memory file
-MEM_FILE = "sign_memory.json"
+MEM_FILE = os.environ.get("SIGN_MEMORY", os.path.join(repo_dir, "sign_memory.json"))
 
 # Load existing memory or create new
 if os.path.exists(MEM_FILE):
@@ -22,7 +31,34 @@ def get_gps():
     return loc.latlng  # returns (lat, lon)
 
 def save_memory(entry):
-    memory_data.append(entry)
+    updated = False
+    try:
+        lat = entry.get("latitude")
+        lon = entry.get("longitude")
+        label = entry.get("sign_type")
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371e3
+            phi1 = lat1 * math.pi/180
+            phi2 = lat2 * math.pi/180
+            dphi = (lat2-lat1) * math.pi/180
+            dlambda = (lon2-lon1) * math.pi/180
+            a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+            return R * (2*math.atan2(math.sqrt(a), math.sqrt(1-a)))
+        for m in memory_data:
+            if m.get("sign_type") == label:
+                d = haversine(lat, lon, m.get("latitude"), m.get("longitude"))
+                if d <= float(os.environ.get("MEM_UPDATE_RADIUS", "30")):
+                    alpha = float(os.environ.get("MEM_UPDATE_ALPHA", "0.3"))
+                    m["latitude"] = alpha*lat + (1-alpha)*m.get("latitude")
+                    m["longitude"] = alpha*lon + (1-alpha)*m.get("longitude")
+                    m["confidence"] = max(m.get("confidence", 0), entry.get("confidence", 0))
+                    m["timestamp"] = entry.get("timestamp")
+                    updated = True
+                    break
+    except Exception:
+        pass
+    if not updated:
+        memory_data.append(entry)
     with open(MEM_FILE, "w") as f:
         json.dump(memory_data, f, indent=4)
 
@@ -50,6 +86,14 @@ def detect_sign_and_map(image_path):
     for box in results.boxes:
         cls_id = int(box.cls[0])
         label = results.names[cls_id]
+        mapping_path = os.path.join(repo_dir, "class_names.json")
+        if os.path.exists(mapping_path):
+            try:
+                with open(mapping_path, "r") as mf:
+                    class_map = json.load(mf)
+                label = class_map.get(label, label)
+            except Exception:
+                pass
         conf = float(box.conf[0])
 
         print(f"✔ Detected sign: {label} ({conf:.2f})")
@@ -63,7 +107,8 @@ def detect_sign_and_map(image_path):
             "sign_type": label,
             "confidence": conf,
             "latitude": lat,
-            "longitude": lon
+            "longitude": lon,
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
         }
         save_memory(entry)
 
@@ -71,4 +116,5 @@ def detect_sign_and_map(image_path):
         update_map(lat, lon, label)
 
 if __name__ == "__main__":
-    detect_sign_and_map(r"D:\WSU Academy Files\Fall 2025\ECE 5995\Final_Project\50mph.jpg")
+    image_path = os.environ.get("IMAGE_PATH", os.path.join(repo_dir, "test_image.jpg"))
+    detect_sign_and_map(image_path)

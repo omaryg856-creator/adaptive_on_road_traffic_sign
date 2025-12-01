@@ -4,7 +4,8 @@ import json
 import math
 import os
 
-MEM_FILE = "sign_memory.json"
+repo_dir = os.path.dirname(os.path.abspath(__file__))
+MEM_FILE = os.environ.get("SIGN_MEMORY", os.path.join(repo_dir, "sign_memory.json"))
 
 if os.path.exists(MEM_FILE):
     with open(MEM_FILE, "r") as f:
@@ -12,7 +13,13 @@ if os.path.exists(MEM_FILE):
 else:
     memory = []
 
-model = YOLO("runs/detect/train/weights/best.pt")
+weights = os.environ.get(
+    "WEIGHTS_PATH",
+    os.path.join(repo_dir, "runs", "detect", "train", "weights", "best.pt")
+)
+if not os.path.exists(weights):
+    weights = os.path.join(repo_dir, "yolov8n.pt")
+model = YOLO(weights)
 
 def get_gps():
     loc = geocoder.ip("me")
@@ -72,7 +79,7 @@ def replay_phase(image_path):
     return results
 
 if __name__ == "__main__":
-    image_path = r"D:\WSU Academy Files\Fall 2025\ECE 5995\Final_Project\50mph.jpg"
+    image_path = os.environ.get("REPLAY_IMAGE", os.path.join(repo_dir, "test_image.jpg"))
     results = replay_phase(image_path)
 
     print("\nReplay Phase Results:")

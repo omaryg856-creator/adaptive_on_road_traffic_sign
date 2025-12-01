@@ -2,7 +2,8 @@ import os
 import xml.etree.ElementTree as ET
 
 # Paths
-BASE = r"D:\WSU Academy Files\Fall 2025\ECE 5995\Final_Project\dataset\challenging-dev\challenging"
+repo_dir = os.path.dirname(os.path.abspath(__file__))
+BASE = os.environ.get("DATASET_BASE", os.path.join(repo_dir, "dataset", "challenging-dev", "challenging"))
 XML_FOLDER = os.path.join(BASE, "Annotations")
 IMG_FOLDER = os.path.join(BASE, "JPEGImages")
 SET_FOLDER = os.path.join(BASE, "ImageSets", "Main")
